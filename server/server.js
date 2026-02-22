@@ -12,9 +12,14 @@ import User from "./models/User.js";
 const app = express();
 const server = http.createServer(app);
 
-// Middleware
+// 🔥 Middleware (CORS FIXED)
 app.use(express.json({ limit: "4mb" }));
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // ✅ correct Vite port
+    credentials: true,
+  })
+);
 
 // Routes
 app.use("/api/status", (req, res) => res.send("Server is live"));
@@ -23,23 +28,19 @@ app.use("/api/messages", messageRouter);
 
 // Socket.io
 export const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: { origin: "http://localhost:5173", credentials: true },
 });
 
 export const userSocketMap = {};
 
-// 🔐 SOCKET AUTH (JWT FIX)
+// 🔐 SOCKET AUTH (JWT)
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
-    if (!token) {
-      console.log("jwt must be provided");
-      return next(new Error("jwt must be provided"));
-    }
+    if (!token) return next(new Error("jwt must be provided"));
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select("-password");
-
     if (!user) return next(new Error("User not found"));
 
     socket.user = user;
@@ -52,10 +53,9 @@ io.use(async (socket, next) => {
 
 io.on("connection", (socket) => {
   const userId = socket.user._id.toString();
-
   console.log("User Connected", userId);
-  userSocketMap[userId] = socket.id;
 
+  userSocketMap[userId] = socket.id;
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   socket.on("disconnect", () => {
@@ -68,9 +68,7 @@ io.on("connection", (socket) => {
 // DB + Server start
 await connectDB();
 
-const PORT = process.env.PORT || 5001;
-server.listen(PORT, () =>
-  console.log("Server is running on PORT:", PORT)
-);
-
-export default server;
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server is running at http://localhost:${PORT}`);
+});

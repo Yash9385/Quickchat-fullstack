@@ -74,18 +74,28 @@ export const AuthProvider = ({ children }) => {
     };
 
     // ✅ UPDATE PROFILE
-    const updateProfile = async (body) => {
-        try {
-            const { data } = await axios.put("/api/auth/update-profile", body);
-            if (data.success) {
-                setAuthUser(data.user);
-                toast.success("Profile updated");
+   const updateProfile = async (formData) => {
+    try {
+        const { data } = await axios.put(
+            "/api/auth/update-profile",
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || err.message);
-        }
-    };
+        );
 
+        if (data.success) {
+            setAuthUser(data.user);
+            toast.success("Profile updated");
+        } else {
+            toast.error(data.message);
+        }
+    } catch (err) {
+        toast.error(err.response?.data?.message || err.message);
+    }
+};
     // 🔌 SOCKET CONNECT
     const connectSocket = (userData) => {
         if (!userData || socket?.connected) return;
